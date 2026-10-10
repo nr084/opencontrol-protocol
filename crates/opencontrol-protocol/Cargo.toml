@@ -1,0 +1,22 @@
+[package]
+name = "opencontrol-protocol"
+description = "Socket-independent OpenControl Protocol codecs and session primitives"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+readme = "../../README.md"
+repository = "https://github.com/nr084/opencontrol-protocol"
+
+[dependencies]
+bytes = "1"
+thiserror = "2"
+aes-gcm = "0.10"
+getrandom = "0.2"
+zeroize = "1"
+
+[dev-dependencies]
+proptest = "1"
+serde_json = "1"
+hex = "0.4"
+

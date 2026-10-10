@@ -1,0 +1,75 @@
+{
+  "reference_status": "Synthetic, static-derived vectors; AES independently cross-checked. No production secrets or client captures.",
+  "vectors": [
+    {
+      "name": "version4",
+      "input": {
+        "opcode": 22,
+        "payload_hex": "04"
+      },
+      "expected_hex": "4b05001604",
+      "evidence": "E0004,E0008",
+      "verification": "manual literal vs independent Python struct formatter; no vendor runtime"
+    },
+    {
+      "name": "username_synthetic",
+      "input": {
+        "opcode": 1,
+        "payload_hex": "616c69636500"
+      },
+      "expected_hex": "4b0a0001616c69636500",
+      "evidence": "E0004,E0009",
+      "verification": "manual literal vs independent Python struct formatter; no vendor runtime"
+    },
+    {
+      "name": "password_synthetic",
+      "input": {
+        "opcode": 2,
+        "payload_hex": "6578616d706c6500"
+      },
+      "expected_hex": "4b0c00026578616d706c6500",
+      "evidence": "E0004,E0009,E0036",
+      "verification": "manual literal vs independent Python struct formatter; no vendor runtime"
+    },
+    {
+      "name": "keepalive",
+      "input": {
+        "opcode": 10,
+        "payload_hex": "00"
+      },
+      "expected_hex": "4b05000a00",
+      "evidence": "E0004,E0023",
+      "verification": "manual literal vs independent Python struct formatter; no vendor runtime"
+    },
+    {
+      "name": "empty_ok",
+      "input": {
+        "opcode": 3,
+        "payload_hex": "00"
+      },
+      "expected_hex": "4b05000300",
+      "evidence": "E0004,E0011",
+      "verification": "manual literal vs independent Python struct formatter; no vendor runtime"
+    },
+    {
+      "name": "udp_keepalive",
+      "expected_hex": "4b00020000",
+      "evidence": "E0022",
+      "verification": "instruction-derived literal only"
+    },
+    {
+      "name": "aes_synthetic_ethertype_and_counter",
+      "input": {
+        "key_hex": "00000000000000000000000000000000",
+        "iv_hex": "000000000000000000000000",
+        "aad_hex": "",
+        "plaintext_hex": "080000000001",
+        "ciphertext_hex": "0b88dace60b7",
+        "tag_hex": "207f594ef8a7950f1036e4575ed9e92b"
+      },
+      "expected_datagram_hex": "4b000000000000000000000000000000207f594ef8a7950f1036e4575ed9e92b0b88dace60b7",
+      "evidence": "E0018,E0019,E0020",
+      "verification": "AES cross-check PASS; cryptography AESGCM and Node crypto agree. Formatting is static-derived. Payload is intentionally not a valid IP packet."
+    }
+  ]
+}

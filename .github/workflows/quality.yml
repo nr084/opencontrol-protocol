@@ -1,0 +1,26 @@
+name: Library quality
+on: [push, pull_request]
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo test --workspace --locked
+  fuzz-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - run: cargo install cargo-fuzz --locked
+      - run: |
+          mkdir -p fuzz/corpus/fuzz_control_decoder fuzz/corpus/fuzz_state_machine
+          cp protocol/fixtures/control/*.bin fuzz/corpus/fuzz_control_decoder/
+          cp protocol/vectors/handshake_v4.bin fuzz/corpus/fuzz_state_machine/
+          cargo +nightly fuzz run fuzz_control_decoder -- -max_total_time=15
+          cargo +nightly fuzz run fuzz_datagram_decoder -- -max_total_time=15
+          cargo +nightly fuzz run fuzz_state_machine -- -max_total_time=15
