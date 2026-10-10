@@ -36,6 +36,9 @@ pub use error::ProtocolError;
 pub use limits::ProtocolLimits;
 pub use state::{Direction, ProtocolState, Role, StateMachine};
 
+/// Version of the compiled protocol library, independent of the wire version.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 /// Negotiated wire version; unrelated to the crate version.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WireVersion {
