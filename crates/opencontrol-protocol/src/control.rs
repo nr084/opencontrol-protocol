@@ -188,6 +188,17 @@ pub struct Routes {
     pub flags: u8,
     pub records: Vec<Route>,
 }
+impl Routes {
+    /// Observed replacement-list flag (PROTOCOL.md, ROUTES).
+    pub fn replaces_routes(&self) -> bool {
+        self.flags & 1 != 0
+    }
+
+    /// Observed flags 0+3 request default-covering routes. Installation is caller-owned.
+    pub fn is_full_tunnel(&self) -> bool {
+        self.flags & 9 == 9
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientMetadata {
@@ -235,6 +246,24 @@ pub struct IpConfig {
     pub extended: Option<ExtendedIpConfig>,
     pub flags: Option<u8>,
     pub secret: BindingSecret,
+}
+impl IpConfig {
+    /// Explicit client adapter policy observed in E0014/E0015: the server's
+    /// loopback DNS sentinel names its VPN gateway. Codec fields stay lossless.
+    pub fn client_dns_servers(&self) -> Vec<[u8; 4]> {
+        let gateway = (u32::from_be_bytes(self.address) & u32::from_be_bytes(self.netmask)) | 1;
+        self.dns
+            .iter()
+            .filter(|address| **address != [0; 4])
+            .map(|address| {
+                if *address == [127, 0, 0, 1] {
+                    gateway.to_be_bytes()
+                } else {
+                    *address
+                }
+            })
+            .collect()
+    }
 }
 
 /// Payloads ignored or insufficiently described by the reference client remain opaque.
