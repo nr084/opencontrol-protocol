@@ -29,11 +29,13 @@ pub mod crypto;
 pub mod datagram;
 mod error;
 mod limits;
+pub mod routes;
 pub mod state;
 
 pub use control::*;
 pub use error::ProtocolError;
 pub use limits::ProtocolLimits;
+pub use routes::{RouteConfiguration, RouteState, RouteUpdate};
 pub use state::{Direction, ProtocolState, Role, StateMachine};
 
 /// Version of the compiled protocol library, independent of the wire version.

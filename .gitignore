@@ -2,4 +2,6 @@
 /fuzz/target/
 /fuzz/artifacts/
 /fuzz/corpus/
+/tools/routes-live/target/
+/protocol/live/*.jsonl
 

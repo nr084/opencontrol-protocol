@@ -1,0 +1,10 @@
+{
+  "provenance": "Synthetic regression timeline; not a capture or a mapping of textual log flags. Wire flags3/count0 follows prior E0024/V0004 lab layout.",
+  "time_semantics": "Virtual seconds; no real server or wall-clock wait",
+  "events": [
+    { "at_seconds": 0, "wire_hex": "4b0600130300", "result": "Changed" },
+    { "at_seconds": 600, "wire_hex": "4b0600130300", "result": "Unchanged" },
+    { "at_seconds": 1200, "wire_hex": "4b0600130300", "result": "Unchanged" },
+    { "at_seconds": 1201, "wire_hex": "4b0600130300", "result": "Unchanged" }
+  ]
+}

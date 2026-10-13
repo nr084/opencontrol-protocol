@@ -1,5 +1,22 @@
 # Testing
 
+## 0.2.0 ROUTES regression
+
+`cargo test --workspace --locked` includes tests/routes.rs and the RouteState docs.
+`cargo test --workspace --all-targets --locked` additionally executes both
+client_routes example tests: periodic no-op and platform-failure/retry.
+`cargo run --example client_routes` simulates0/600/1200/1201 seconds; it does not
+wait20 minutes or connect to a server. routes_updates.json is explicitly synthetic.
+The rekey regression checks Active/version/primary/pending and real encrypted traffic
+with both slots, including rejection of already accepted ciphertext.
+No real-server repeated-update certification is implied. See VALIDATION.md.
+
+A separate actual 61-minute reference-server diagnostic passed on 2026-10-13:
+six periodic no-op ROUTES, 725/725 authenticated echoes and 121 rekeys, without
+reconnecting. Sanitized metadata is in interop/routes-periodic-hour-20261013.json;
+the additional regression replays its empty-route observations without waiting.
+This does not test Android platform updates or real route-list changes.
+
 From `library`, with a stable Rust toolchain:
 
 ```sh

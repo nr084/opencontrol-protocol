@@ -189,7 +189,7 @@ pub struct Routes {
     pub records: Vec<Route>,
 }
 impl Routes {
-    /// Observed replacement-list flag (PROTOCOL.md, ROUTES).
+    /// Starts replacement maintenance. Old routes remain effective until bit1 finishes it.
     pub fn replaces_routes(&self) -> bool {
         self.flags & 1 != 0
     }
@@ -197,6 +197,16 @@ impl Routes {
     /// Observed flags 0+3 request default-covering routes. Installation is caller-owned.
     pub fn is_full_tunnel(&self) -> bool {
         self.flags & 9 == 9
+    }
+
+    /// Completes maintenance and removes previously marked, untouched routes.
+    pub fn finishes_routes(&self) -> bool {
+        self.flags & 2 != 0
+    }
+
+    /// Observed client status; its broader server policy meaning is unknown.
+    pub fn safe_lan(&self) -> bool {
+        self.flags & 4 != 0
     }
 }
 

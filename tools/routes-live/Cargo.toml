@@ -1,0 +1,19 @@
+[package]
+name = "oc-routes-live"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+opencontrol-protocol = { path = "../../crates/opencontrol-protocol", version = "=0.2.0" }
+anyhow = "1"
+bytes = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "ring", "tls12"] }
+sha2 = "0.10"
+x509-parser = "0.18"
+serde_json = "1"
+zeroize = "1"

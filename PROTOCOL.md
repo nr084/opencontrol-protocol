@@ -176,11 +176,39 @@ bytes and flags are preserved. Character normalization is never invented.
 - Payload: flags:u8, count:u8, `count` records of network[4], netmask[4].
   Exact length2+8*count, count0..255 further constrained by caller limit.
 - Network order address bytes. No gateway or optional trailing records.
-- KNOWN: bit0 clears prior list, bit1 changes full routing, bits0+3 trigger two
-  default-covering /1 routes locally; bit2 drives a status callback.
+- KNOWN: bit0 starts replacement maintenance by marking prior entries untouched;
+  records touch/add entries; bit1 finishes maintenance by removing untouched entries.
+  Bits0+3 touch/add two default-covering /1 routes; bit2 drives the safeLan status callback.
+  This refines the older "clear/full routing" shorthand after resolving helper calls
+  in E0024. See [maintenance evidence](protocol/research/routes-maintenance.md).
 - UNKNOWN: complete peer policy meaning of bit2 and unobserved flag bits.
   Library preserves flags and installs no routes.
 - Failure: count/length/resource mismatch. Evidence: E0024/E0056.
+
+`RouteState` is optional caller-owned state, independent of the session/key state
+machine. It applies initial and repeated ROUTES, including multiple maintenance
+batches. Existing routes remain effective until a completing message sweeps them.
+No-op repeats succeed; empty additive and empty replacement messages differ.
+Full coverage is derived from effective routes, never count alone. Unknown bits
+are retained as metadata and do not trigger an invented platform policy.
+
+The tracker canonicalizes an exact set of network/mask records, without merging
+overlapping prefixes or rewriting wire bytes. It checks contiguous masks and aligned
+networks as local client-planning policy; the lossless wire codec is unchanged.
+Aggregate storage is bounded by max_collection_items and a4096-route hard ceiling,
+including generated /1 defaults. Errors preserve both configuration and in-progress
+maintenance. First successful application returns Changed even if the route set is
+empty; later effective equality returns Unchanged. Bit2-only changes return Changed.
+The caller owns OS application/rollback, local connected routes and endpoint bypass.
+ROUTES is valid in Active even while rekey is pending. It does not reset keys or counters.
+
+OBSERVED (2026-10-13): a local0.2.0 diagnostic completed3665 seconds against the
+authorized reference-server lab. Six real flags3/count0 repeats arrived roughly
+600 seconds apart, all applied as Unchanged, with725/725 authenticated echo replies
+and121 acknowledged rekeys in the same session. Evidence:
+[hourly metadata](protocol/fixtures/interop/routes-periodic-hour-20261013.json).
+No changed lists, unknown-bit policy, OS route application or Android end-to-end
+acceptance are inferred from this observation.
 
 ### Unknown control messages
 
@@ -213,6 +241,13 @@ noncanonical envelopes remain Unknown. Canonical trailing bytes rejected.
 KNOWN: reference idle-send about5s; health flag after33s, polled by control30s.
 OBSERVED: same-socket port migration failed in bounded tests; broader policy UNKNOWN.
 Evidence: E0022/E0044, V0003. Timers remain caller-owned.
+OBSERVED downstream checkpoint2026-10-10: OpenControl Server0.1.0 emits the same
+canonical Keepalive through this library back to an Active bound V4 peer. An
+unmodified compatible client retained the same full-tunnel session through90s
+without payload traffic and resumed encrypted ping. Without replies it reconnected
+on UDP receive-health expiry. See [metadata](protocol/fixtures/interop/server_v4_idle.json)
+and [server evidence](../server/artifacts/lab-full.json). This measures V4 directional
+acceptance; plaintext keepalive carries no authentication.
 
 ### AES_DATA — type0
 

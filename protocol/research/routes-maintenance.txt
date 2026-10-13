@@ -1,0 +1,522 @@
+FUNCTION 99010 SIZE 53
+99010: push rbp
+99011: lea rbp, [rdi + 8]
+99015: push rbx
+99016: mov rbx, rdi
+99019: mov rdi, rbp
+9901c: sub rsp, 8
+99020: call 0x3deea0
+99025: mov rdx, qword ptr [rbx]
+99028: lea rsi, [rip + 0x367c32] maintenance started
+9902f: mov rdi, rbx
+99032: xor eax, eax
+99034: call qword ptr [rdx]
+99036: mov byte ptr [rbx + 0xd8], 0
+9903d: mov rdi, rbx
+99040: call 0x98e00
+99045: add rsp, 8
+99049: mov rdi, rbp
+9904c: pop rbx
+9904d: pop rbp
+9904e: jmp 0x3def10
+99053: mov rbx, rax
+99056: jmp 0x53fdc
+9905b: mov rbx, rax
+9905e: jmp 0x53fec
+FUNCTION 99070 SIZE 4c
+99070: push rbp
+99071: lea rbp, [rdi + 8]
+99075: push rbx
+99076: mov rbx, rdi
+99079: mov rdi, rbp
+9907c: sub rsp, 8
+99080: call 0x3deea0
+99085: mov rdi, rbx
+99088: call 0x98e30
+9908d: mov rdx, qword ptr [rbx]
+99090: lea rsi, [rip + 0x367bde] maintenance done
+99097: mov rdi, rbx
+9909a: xor eax, eax
+9909c: call qword ptr [rdx]
+9909e: add rsp, 8
+990a2: mov rdi, rbp
+990a5: pop rbx
+990a6: pop rbp
+990a7: jmp 0x3def10
+990ac: mov rbx, rax
+990af: jmp 0x53ffc
+990b4: mov rbx, rax
+990b7: jmp 0x5400c
+FUNCTION 98e00 SIZE 2f
+98e00: push rbx
+98e01: mov rax, qword ptr [rdi + 0xc0]
+98e08: lea rbx, [rdi + 0xb0]
+98e0f: cmp rax, rbx
+98e12: je 0x98e2d
+98e14: nop dword ptr [rax]
+98e18: mov rdx, qword ptr [rax + 0x20]
+98e1c: mov rdi, rax
+98e1f: mov byte ptr [rdx + 8], 0
+98e23: call 0x50880 _ZSt18_Rb_tree_incrementPSt18_Rb_tree_node_base
+98e28: cmp rax, rbx
+98e2b: jne 0x98e18
+98e2d: pop rbx
+98e2e: ret
+FUNCTION 98e30 SIZE 1de
+98e30: push r15
+98e32: push r14
+98e34: lea r14, [rdi + 0xb0]
+98e3b: push r13
+98e3d: mov r13, rdi
+98e40: push r12
+98e42: push rbp
+98e43: push rbx
+98e44: sub rsp, 0x18
+98e48: mov rbx, qword ptr [rdi + 0xc0]
+98e4f: cmp rbx, r14
+98e52: je 0x98f90
+98e58: nop dword ptr [rax + rax]
+98e60: mov r12, qword ptr [rbx + 0x20]
+98e64: mov rdi, rbx
+98e67: call 0x50880 _ZSt18_Rb_tree_incrementPSt18_Rb_tree_node_base
+98e6c: cmp byte ptr [r12 + 8], 0
+98e72: mov rbp, rax
+98e75: jne 0x98f84
+98e7b: cmp byte ptr [r12 + 9], 0
+98e81: jne 0x98f84
+98e87: mov rax, qword ptr [r12 + 0x10]
+98e8c: movzx ecx, byte ptr [r12 + 0xb]
+98e92: lea rsi, [rip + 0x367dba] not_added
+98e99: movzx r11d, byte ptr [r12 + 0xa]
+98e9f: mov edx, dword ptr [r12]
+98ea3: mov qword ptr [rsp + 8], rax
+98ea8: mov rax, qword ptr [r13]
+98eac: test cl, cl
+98eae: mov r15d, dword ptr [r12 + 4]
+98eb3: mov r12d, ecx
+98eb6: mov dword ptr [rsp + 4], edx
+98eba: mov r8d, edx
+98ebd: mov r10, qword ptr [rax]
+98ec0: lea rax, [rip + 0x367d90] added
+98ec7: mov byte ptr [rsp + 3], r11b
+98ecc: mov edi, edx
+98ece: cmovne rsi, rax
+98ed2: lea rcx, [rip + 0x367d84] sys
+98ed9: test r11b, r11b
+98edc: lea rax, [rip + 0x3b16fd] loc
+98ee3: cmovne rax, rcx
+98ee7: push rsi
+98ee8: shr edi, 0x18
+98eeb: movzx ecx, dh
+98eee: shr r8d, 0x10
+98ef2: mov r9d, edi
+98ef5: movzx edx, dl
+98ef8: push rax
+98ef9: mov eax, r15d
+98efc: movzx r8d, r8b
+98f00: lea rsi, [rip + 0x367d89] route %d.%d.%d.%d/%d.%d.%d.%d (%s/%s) removed from list
+98f07: shr eax, 0x18
+98f0a: mov rdi, r13
+98f0d: push rax
+98f0e: mov eax, r15d
+98f11: shr eax, 0x10
+98f14: movzx eax, al
+98f17: push rax
+98f18: mov eax, r15d
+98f1b: movzx eax, ah
+98f1e: push rax
+98f1f: movzx eax, r15b
+98f23: push rax
+98f24: xor eax, eax
+98f26: call r10
+98f29: add rsp, 0x30
+98f2d: cmp byte ptr [r13 + 0xd9], 0
+98f35: je 0x98f46
+98f37: movzx r11d, byte ptr [rsp + 3]
+98f3d: test r12b, r11b
+98f40: jne 0x98fe0
+98f46: mov rdi, rbx
+98f49: mov rsi, r14
+98f4c: call 0x50320 _ZSt28_Rb_tree_rebalance_for_erasePSt18_Rb_tree_node_baseRS_
+98f51: mov rbx, qword ptr [rax + 0x28]
+98f55: mov r12, rax
+98f58: test rbx, rbx
+98f5b: je 0x98f6c
+98f5d: mov edx, 0xffffffff
+98f62: lock xadd dword ptr [rbx + 8], edx
+98f67: cmp edx, 1
+98f6a: je 0x98fa0
+98f6c: mov rdi, r12
+98f6f: call 0x4f390 _ZdlPv
+98f74: sub qword ptr [r13 + 0xd0], 1
+98f7c: mov byte ptr [r13 + 0xd8], 1
+98f84: mov rbx, rbp
+98f87: cmp r14, rbp
+98f8a: jne 0x98e60
+98f90: add rsp, 0x18
+98f94: pop rbx
+98f95: pop rbp
+98f96: pop r12
+98f98: pop r13
+98f9a: pop r14
+98f9c: pop r15
+98f9e: ret
+98f9f: nop
+98fa0: mov rax, qword ptr [rbx]
+98fa3: mov rax, qword ptr [rax + 0x10]
+98fa7: cmp rax, qword ptr [rip + 0x4c3f2a]
+98fae: jne 0x99000
+98fb0: mov rdi, qword ptr [rbx + 0x10]
+98fb4: call 0x4f390 _ZdlPv
+98fb9: mov eax, 0xffffffff
+98fbe: lock xadd dword ptr [rbx + 0xc], eax
+98fc3: cmp eax, 1
+98fc6: jne 0x98f6c
+98fc8: mov rax, qword ptr [rbx]
+98fcb: mov rdi, rbx
+98fce: mov rdx, qword ptr [rax + 0x18]
+98fd2: cmp rdx, qword ptr [rip + 0x4c3b0f]
+98fd9: jne 0x99007
+98fdb: call qword ptr [rax + 8]
+98fde: jmp 0x98f6c
+98fe0: mov esi, dword ptr [rsp + 4]
+98fe4: mov rdi, qword ptr [rsp + 8]
+98fe9: mov edx, r15d
+98fec: call 0xa6980
+98ff1: jmp 0x98f46
+98ff6: nop word ptr cs:[rax + rax]
+99000: mov rdi, rbx
+99003: call rax
+99005: jmp 0x98fb9
+99007: call rdx
+99009: jmp 0x98f6c
+FUNCTION 99660 SIZE 4ac
+99660: push rbp
+99661: mov rbp, rsp
+99664: push r15
+99666: push r14
+99668: lea r14, [rdi + 8]
+9966c: push r13
+9966e: push r12
+99670: mov r12, rdi
+99673: mov rdi, r14
+99676: push rbx
+99677: mov ebx, esi
+99679: sub rsp, 0x48
+9967d: mov dword ptr [rbp - 0x54], edx
+99680: mov dword ptr [rbp - 0x60], ecx
+99683: mov dword ptr [rbp - 0x58], r8d
+99687: call 0x3deea0
+9968c: mov rax, qword ptr [r12 + 0xc0]
+99694: lea r13, [r12 + 0xb0]
+9969c: cmp rax, r13
+9969f: jne 0x996c1
+996a1: jmp 0x99760
+996a6: nop word ptr cs:[rax + rax]
+996b0: mov rdi, rax
+996b3: call 0x50880 _ZSt18_Rb_tree_incrementPSt18_Rb_tree_node_base
+996b8: cmp rax, r13
+996bb: je 0x99760
+996c1: mov rdx, qword ptr [rax + 0x20]
+996c5: cmp ebx, dword ptr [rdx]
+996c7: jne 0x996b0
+996c9: mov ecx, dword ptr [rbp - 0x54]
+996cc: cmp dword ptr [rdx + 4], ecx
+996cf: jne 0x996b0
+996d1: mov byte ptr [rdx + 8], 1
+996d5: mov rax, qword ptr [rax + 0x20]
+996d9: mov esi, ecx
+996db: mov r8d, ebx
+996de: mov rdx, qword ptr [r12]
+996e2: movzx ecx, bh
+996e5: mov rdi, r12
+996e8: cmp byte ptr [rax + 0xa], 0
+996ec: lea rax, [rip + 0x36756a] sys
+996f3: mov r10, qword ptr [rdx]
+996f6: lea rdx, [rip + 0x3b0ee3] loc
+996fd: cmove rax, rdx
+99701: sub rsp, 8
+99705: shr r8d, 0x10
+99709: movzx edx, bl
+9970c: shr ebx, 0x18
+9970f: movzx r8d, r8b
+99713: push rax
+99714: mov eax, esi
+99716: mov r9d, ebx
+99719: shr eax, 0x18
+9971c: push rax
+9971d: mov eax, esi
+9971f: shr eax, 0x10
+99722: movzx eax, al
+99725: push rax
+99726: mov eax, esi
+99728: lea rsi, [rip + 0x367599] route %d.%d.%d.%d/%d.%d.%d.%d (%s) touched
+9972f: movzx eax, ah
+99732: push rax
+99733: movzx eax, byte ptr [rbp - 0x54]
+99737: push rax
+99738: xor eax, eax
+9973a: call r10
+9973d: add rsp, 0x30
+99741: mov rdi, r14
+99744: call 0x3def10
+99749: lea rsp, [rbp - 0x28]
+9974d: xor eax, eax
+9974f: pop rbx
+99750: pop r12
+99752: pop r13
+99754: pop r14
+99756: pop r15
+99758: pop rbp
+99759: ret
+9975a: nop word ptr [rax + rax]
+99760: cmp byte ptr [rbp - 0x58], 0
+99764: jne 0x99928
+9976a: call 0x9a9b0
+9976f: mov rdi, rax
+99772: call 0x9a930
+99777: movsxd r13, eax
+9977a: mov edi, 0x18
+9977f: mov qword ptr [rbp - 0x68], r13
+99783: call 0x4e440 _Znwm
+99788: mov r15, rax
+9978b: mov dword ptr [rax], ebx
+9978d: mov eax, dword ptr [rbp - 0x54]
+99790: mov edi, 0x18
+99795: mov byte ptr [r15 + 8], 1
+9979a: mov dword ptr [r15 + 4], eax
+9979e: movzx eax, byte ptr [rbp - 0x60]
+997a2: mov byte ptr [r15 + 0xb], 0
+997a7: mov byte ptr [r15 + 9], al
+997ab: movzx eax, byte ptr [rbp - 0x58]
+997af: mov qword ptr [r15 + 0x10], r13
+997b3: mov byte ptr [r15 + 0xa], al
+997b7: call 0x4e440 _Znwm
+997bc: mov r13, rax
+997bf: lea rsi, [rbp - 0x50]
+997c3: mov qword ptr [rbp - 0x50], r15
+997c7: movabs rax, 0x100000001
+997d1: mov qword ptr [r13 + 8], rax
+997d5: lea rax, [rip + 0x4b8114]
+997dc: lea rdi, [r12 + 0xa8]
+997e4: mov qword ptr [r13 + 0x10], r15
+997e8: add rax, 0x10
+997ec: mov qword ptr [rbp - 0x48], r13
+997f0: mov qword ptr [r13], rax
+997f4: lock inc dword ptr [r13 + 8]
+997f9: mov dword ptr [rbp - 0x40], 0
+99800: call 0x9a110
+99805: mov rax, qword ptr [rbp - 0x48]
+99809: test rax, rax
+9980c: je 0x99858
+9980e: mov edx, 0xffffffff
+99813: lock xadd dword ptr [rax + 8], edx
+99818: cmp edx, 1
+9981b: jne 0x99858
+9981d: mov rdx, qword ptr [rax]
+99820: mov rdx, qword ptr [rdx + 0x10]
+99824: cmp rdx, qword ptr [rip + 0x4c36ad]
+9982b: jne 0x99ac7
+99831: mov rdi, qword ptr [rax + 0x10]
+99835: mov qword ptr [rbp - 0x60], rax
+99839: call 0x4f390 _ZdlPv
+9983e: mov rax, qword ptr [rbp - 0x60]
+99842: mov edx, 0xffffffff
+99847: lock xadd dword ptr [rax + 0xc], edx
+9984c: cmp edx, 1
+9984f: je 0x99aa2
+99855: nop dword ptr [rax]
+99858: cmp byte ptr [r12 + 0xd9], 0
+99861: jne 0x99990
+99867: mov esi, dword ptr [rbp - 0x54]
+9986a: mov r8d, ebx
+9986d: mov r10, qword ptr [r12]
+99871: movzx ecx, bh
+99874: shr r8d, 0x10
+99878: movzx edx, bl
+9987b: shr ebx, 0x18
+9987e: mov rdi, r12
+99881: mov eax, esi
+99883: mov r9d, ebx
+99886: movzx r8d, r8b
+9988a: shr eax, 0x18
+9988d: push rax
+9988e: mov eax, esi
+99890: shr eax, 0x10
+99893: movzx eax, al
+99896: push rax
+99897: mov eax, esi
+99899: lea rsi, [rip + 0x367540] route %d.%d.%d.%d/%d.%d.%d.%d added into list
+998a0: movzx eax, ah
+998a3: push rax
+998a4: movzx eax, byte ptr [rbp - 0x54]
+998a8: push rax
+998a9: xor eax, eax
+998ab: call qword ptr [r10]
+998ae: add rsp, 0x20
+998b2: mov byte ptr [r12 + 0xd8], 1
+998bb: mov eax, 0xffffffff
+998c0: lock xadd dword ptr [r13 + 8], eax
+998c6: cmp eax, 1
+998c9: jne 0x99741
+998cf: mov rax, qword ptr [r13]
+998d3: mov rax, qword ptr [rax + 0x10]
+998d7: cmp rax, qword ptr [rip + 0x4c35fa]
+998de: jne 0x99abd
+998e4: mov rdi, qword ptr [r13 + 0x10]
+998e8: call 0x4f390 _ZdlPv
+998ed: mov eax, 0xffffffff
+998f2: lock xadd dword ptr [r13 + 0xc], eax
+998f8: cmp eax, 1
+998fb: jne 0x99741
+99901: mov rax, qword ptr [r13]
+99905: mov rdi, r13
+99908: mov rdx, qword ptr [rax + 0x18]
+9990c: cmp rdx, qword ptr [rip + 0x4c31d5]
+99913: jne 0x99ad9
+99919: call qword ptr [rax + 8]
+9991c: jmp 0x99741
+99921: nop dword ptr [rax]
+99928: mov esi, dword ptr [rbp - 0x54]
+9992b: mov edi, ebx
+9992d: call 0xa7280
+99932: test al, al
+99934: je 0x9976a
+9993a: mov esi, dword ptr [rbp - 0x54]
+9993d: mov r8d, ebx
+99940: mov r10, qword ptr [r12]
+99944: movzx ecx, bh
+99947: shr r8d, 0x10
+9994b: movzx edx, bl
+9994e: shr ebx, 0x18
+99951: mov rdi, r12
+99954: mov eax, esi
+99956: mov r9d, ebx
+99959: movzx r8d, r8b
+9995d: shr eax, 0x18
+99960: push rax
+99961: mov eax, esi
+99963: shr eax, 0x10
+99966: movzx eax, al
+99969: push rax
+9996a: mov eax, esi
+9996c: lea rsi, [rip + 0x367385] system route %d.%d.%d.%d/%d.%d.%d.%d not added into list (already exists in system routing table)
+99973: movzx eax, ah
+99976: push rax
+99977: movzx eax, byte ptr [rbp - 0x54]
+9997b: push rax
+9997c: xor eax, eax
+9997e: call qword ptr [r10]
+99981: add rsp, 0x20
+99985: jmp 0x99741
+9998a: nop word ptr [rax + rax]
+99990: sub rsp, 8
+99994: movzx r9d, byte ptr [rbp - 0x58]
+99999: mov edx, dword ptr [rbp - 0x54]
+9999c: mov esi, ebx
+9999e: mov eax, dword ptr [r12 + 0xe4]
+999a6: mov ecx, dword ptr [r12 + 0xdc]
+999ae: movzx r8d, word ptr [r12 + 0xe0]
+999b7: mov rdi, qword ptr [rbp - 0x68]
+999bb: push rax
+999bc: call 0xa6870
+999c1: pop rdx
+999c2: mov rdx, qword ptr [r12]
+999c6: pop rcx
+999c7: test eax, eax
+999c9: je 0x99a3a
+999cb: cmp byte ptr [rbp - 0x58], 0
+999cf: mov byte ptr [r15 + 0xb], 0
+999d4: mov r8d, ebx
+999d7: movzx ecx, bh
+999da: mov r10, qword ptr [rdx]
+999dd: lea rax, [rip + 0x367279] sys
+999e4: mov esi, dword ptr [rbp - 0x54]
+999e7: mov rdi, r12
+999ea: lea rdx, [rip + 0x3b0bef] loc
+999f1: cmove rax, rdx
+999f5: sub rsp, 8
+999f9: shr r8d, 0x10
+999fd: movzx edx, bl
+99a00: shr ebx, 0x18
+99a03: movzx r8d, r8b
+99a07: push rax
+99a08: mov eax, esi
+99a0a: mov r9d, ebx
+99a0d: shr eax, 0x18
+99a10: push rax
+99a11: mov eax, esi
+99a13: shr eax, 0x10
+99a16: movzx eax, al
+99a19: push rax
+99a1a: mov eax, esi
+99a1c: lea rsi, [rip + 0x36737d] route %d.%d.%d.%d/%d.%d.%d.%d (%s/not_added) added into list
+99a23: movzx eax, ah
+99a26: push rax
+99a27: movzx eax, byte ptr [rbp - 0x54]
+99a2b: push rax
+99a2c: xor eax, eax
+99a2e: call r10
+99a31: add rsp, 0x30
+99a35: jmp 0x998b2
+99a3a: cmp byte ptr [rbp - 0x58], 0
+99a3e: mov byte ptr [r15 + 0xb], 1
+99a43: mov r8d, ebx
+99a46: movzx ecx, bh
+99a49: mov r10, qword ptr [rdx]
+99a4c: lea rax, [rip + 0x36720a] sys
+99a53: mov esi, dword ptr [rbp - 0x54]
+99a56: mov rdi, r12
+99a59: lea rdx, [rip + 0x3b0b80] loc
+99a60: cmove rax, rdx
+99a64: sub rsp, 8
+99a68: shr r8d, 0x10
+99a6c: movzx edx, bl
+99a6f: shr ebx, 0x18
+99a72: movzx r8d, r8b
+99a76: push rax
+99a77: mov eax, esi
+99a79: mov r9d, ebx
+99a7c: shr eax, 0x18
+99a7f: push rax
+99a80: mov eax, esi
+99a82: shr eax, 0x10
+99a85: movzx eax, al
+99a88: push rax
+99a89: mov eax, esi
+99a8b: lea rsi, [rip + 0x3672ce] route %d.%d.%d.%d/%d.%d.%d.%d (%s/added) added into list
+99a92: movzx eax, ah
+99a95: push rax
+99a96: movzx eax, byte ptr [rbp - 0x54]
+99a9a: push rax
+99a9b: xor eax, eax
+99a9d: call r10
+99aa0: jmp 0x99a31
+99aa2: mov rdx, qword ptr [rax]
+99aa5: mov rdi, rax
+99aa8: mov rcx, qword ptr [rdx + 0x18]
+99aac: cmp rcx, qword ptr [rip + 0x4c3035]
+99ab3: jne 0x99ae0
+99ab5: call qword ptr [rdx + 8]
+99ab8: jmp 0x99858
+99abd: mov rdi, r13
+99ac0: call rax
+99ac2: jmp 0x998ed
+99ac7: mov rdi, rax
+99aca: mov qword ptr [rbp - 0x60], rax
+99ace: call rdx
+99ad0: mov rax, qword ptr [rbp - 0x60]
+99ad4: jmp 0x99842
+99ad9: call rdx
+99adb: jmp 0x99741
+99ae0: call rcx
+99ae2: jmp 0x99858
+99ae7: mov rbx, rax
+99aea: jmp 0x54089
+99aef: mov rbx, rax
+99af2: jmp 0x540a1
+99af7: mov rbx, rax
+99afa: jmp 0x5406e
+99aff: mov rbx, rax
+99b02: jmp 0x540ce
+99b07: jmp 0x540b1

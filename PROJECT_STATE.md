@@ -1,5 +1,33 @@
 # Current phase
 
+## 0.2.0 — 2026-10-13
+
+Added per-session RouteState with atomic, bounded ROUTES application, exact-set
+deduplication, mark/touch/sweep maintenance and Changed/Unchanged outcomes.
+Resolved E0024 helper calls refine previous shorthand: bit0 marks prior entries,
+bit1 prunes untouched entries; bit1 alone does not disable full tunneling.
+Unknown bits remain opaque; bit2 is the observed status only. Wire codecs, state
+transitions, authentication, TLS/MFA and rekey/crypto algorithms are unchanged.
+
+Regression coverage includes two periodic virtual-time updates, empty/repeated
+lists, clear, append, segmented snapshots, flag/status/full-tunnel changes, malformed
+input, aggregate limits and preserved primary/pending slots plus both replay states.
+The example tests acknowledged platform application and retry without tracker commit.
+See VALIDATION.md for final results and ANDROID_MIGRATION.md for mandatory consumer
+changes. The existing terminal Android ROUTES handler is not changed here.
+Live acceptance completed after the user restarted the old reference-server VM:
+3665.005 continuous seconds,6 real periodic ROUTES (flags3/count0), all Unchanged;
+725/725 authenticated echoes,121 keepalive responses and121 rekey acknowledgments,
+no disconnect/reconnect. A standalone Windows consumer uses the local0.2.0 library;
+no TUN/OS routes or Android application were exercised. Evidence is in
+protocol/fixtures/interop/routes-periodic-hour-20261013.json and VALIDATION.md.
+The live pending-rekey race and changed route lists were not observed; automatic
+tests cover those cases.32 automatic tests including docs pass after adding the
+recorded-metadata regression. No credentials or lab configuration were changed.
+Version 0.2.0 is released on GitHub as v0.2.0; no crates.io publication.
+
+## Historical 0.1.0 checkpoint
+
 Rust 0.1.0 library baseline implemented from existing protocol evidence.
 Production interoperability acceptance is pending independent server/client testing.
 Core toolchain follows latest stable; official channel checked on2026-10-10:
@@ -52,7 +80,7 @@ is configured but has not run in this local session.
 - Non-ASCII normalization, complete metadata acceptance and flags policy.
 - Universal peer IPv6, NAT migration and long-term expiry behavior.
 - Full legacy cipher kind0 semantics; not implemented.
-- Unmodified compatible client interoperability with a future independent server.
+- Broader client/platform interoperability beyond the measured Ubuntu/V4 server checkpoint.
 
 # Next
 
@@ -68,3 +96,19 @@ wire semantics. API remains pre-1.0; production maturity is not claimed.
 Temporary compilation artifacts were removed after validation: core target,
 fuzz target and the alternate native build directory. Source files, both Cargo
 lockfiles, fixtures and vectors remain. No research originals were changed.
+
+# Downstream server checkpoint — 2026-10-10
+
+OpenControl Server0.1.0 uses this crate as its sole wire implementation and has
+measured unmodified-client acceptance on Ubuntu26.04.1:TLS1.3/wireV4, auth,
+IP/routes/DNS, UDP/GCM/rekey/TUN, split/full LAN/NAT, static IP and negative auth.
+Canonical API probes verify wire1..4 framing/data/tamper/replay independently.
+The route-policy test brings the Linux suite to17 tests including docs;
+fmt/Clippy -D warnings pass. Both dependency audits report zero vulnerabilities.
+
+Canonical UDP Keepalive is also accepted server→client by the measured V4 client:
+responding to an Active bound endpoint maintains the same idle session for90s;
+without replies the client reconnects. Envelope codecs were already sufficient;
+no new wire implementation or crypto semantics were added. Fixture metadata and
+the server's PROJECT_STATE/evidence record this scoped result. No sanitizer or
+sustained production-load certification is inferred from these tests.

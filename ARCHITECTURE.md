@@ -7,6 +7,13 @@ One crate avoids an unnecessary cross-crate secret API. Modules form these layer
 3. `ControlMessage`: version-dependent typed payloads and lossless unknowns.
 4. `crypto` / `datagram`: key ownership, authenticated packets and per-slot replay.
 5. `StateMachine`: explicit handshake ordering and observed rekey promotion.
+6. `RouteState`: per-session effective ROUTES set and atomic mark/touch/sweep updates.
+
+RouteUpdate distinguishes platform-visible changes from successful no-ops. Route
+tracking is independent of StateMachine and DataCipher and cannot reset either.
+Consumers keep one tracker from initial configuration through the active session.
+For acknowledged OS updates, apply to a cloned candidate and commit only after
+platform success, including unchanged results carrying maintenance metadata.
 
 Dependencies are bytes, thiserror, RustCrypto aes-gcm, getrandom and zeroize.
 There is no Tokio dependency, server configuration, user backend, route installation,

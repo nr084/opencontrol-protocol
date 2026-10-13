@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-13",
+  "evidence_kind": "Observed live diagnostic metadata; not raw control capture or synthetic timeline",
+  "client": "Standalone Rust diagnostic on Windows using local OpenControl Protocol 0.2.0",
+  "wire_version": 4,
+  "server": "Previously authorized reference-server lab",
+  "credentials_recorded": false,
+  "initial_routes": {
+    "cep": 60,
+    "count": 0,
+    "duration_seconds": 3665,
+    "event": "started",
+    "flags": 3,
+    "library": "0.2.0",
+    "state": "Active"
+  },
+  "routes": [
+    {
+      "changed": false,
+      "count": 0,
+      "elapsed_seconds": 599.6108739,
+      "event": "routes",
+      "flags": 3,
+      "pending": null,
+      "primary": 1,
+      "traffic_replies": 119
+    },
+    {
+      "changed": false,
+      "count": 0,
+      "elapsed_seconds": 1199.7882307,
+      "event": "routes",
+      "flags": 3,
+      "pending": null,
+      "primary": 1,
+      "traffic_replies": 238
+    },
+    {
+      "changed": false,
+      "count": 0,
+      "elapsed_seconds": 1799.4702289,
+      "event": "routes",
+      "flags": 3,
+      "pending": null,
+      "primary": 1,
+      "traffic_replies": 356
+    },
+    {
+      "changed": false,
+      "count": 0,
+      "elapsed_seconds": 2399.6377447,
+      "event": "routes",
+      "flags": 3,
+      "pending": null,
+      "primary": 1,
+      "traffic_replies": 475
+    },
+    {
+      "changed": false,
+      "count": 0,
+      "elapsed_seconds": 2999.8004858,
+      "event": "routes",
+      "flags": 3,
+      "pending": null,
+      "primary": 1,
+      "traffic_replies": 593
+    },
+    {
+      "changed": false,
+      "count": 0,
+      "elapsed_seconds": 3599.4651992,
+      "event": "routes",
+      "flags": 3,
+      "pending": null,
+      "primary": 1,
+      "traffic_replies": 712
+    }
+  ],
+  "summary": {
+    "actual_wall_clock": true,
+    "elapsed_seconds": 3665.0045778,
+    "event": "summary",
+    "expected_periodic": 6,
+    "keepalive_responses": 121,
+    "os_route_application": false,
+    "passed": true,
+    "periodic_times": [
+      599,
+      1199,
+      1799,
+      2399,
+      2999,
+      3599
+    ],
+    "periodic_unchanged": 6,
+    "platform_changes": 1,
+    "reconnects": 0,
+    "rekeys": 121,
+    "replies": 725,
+    "sent": 725,
+    "state": "Active"
+  },
+  "limits": [
+    "No Android application test",
+    "No TUN or OS route application",
+    "No real route-list changes in this run",
+    "ROUTES/rekey-pending race covered by automatic tests; pending=null in six live events"
+  ],
+  "binary_sha256": "bb943e1ee4d9cd87a5c5de0bfc076a0f0eb5bed08861bffbb310b301746f5e5d",
+  "source_sha256": {
+    "tools/routes-live/src/tls.rs": "33fecc09d0dc1b0829914d07765c0489a4a1c5f36475cf6bd29e3cc73d469a07",
+    "tools/routes-live/src/main.rs": "5c2992aa4e8e9a77893b5bb04d494a29c230af04017304fbf78e530735707af3",
+    "crates/opencontrol-protocol/src/state.rs": "697e83abe2fd36114dee336c4827162fda794dceaea3c50a0d1aa73f3008d998",
+    "crates/opencontrol-protocol/src/control.rs": "be2d3309074c00c582e0a404b393a7f382089b85887683d5e125ed8604145d30",
+    "crates/opencontrol-protocol/src/routes.rs": "b63528643180320ff01b7401882e35a4196d1a2cb8f5cb672a15cab8e9d0c569",
+    "crates/opencontrol-protocol/src/datagram.rs": "3fd8dc3944dfd47dd71877e73c6819c79c30b1cda2ee4c17e057653150db7fc6",
+    "crates/opencontrol-protocol/src/crypto.rs": "0946eebe466a3b81275904dbd38c58938cb9a232db9b2aa94217f969551fdd27"
+  }
+}

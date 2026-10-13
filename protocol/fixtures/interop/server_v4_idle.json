@@ -1,0 +1,21 @@
+{
+  "classification": "measured disposable-lab metadata; no wire capture",
+  "date": "2026-10-10",
+  "library_version": "0.1.0",
+  "server_version": "0.1.0",
+  "client_sha256": "0b39d2f023f89f2e27accf84a9a9f9e005f4f83bf63b5e93242659c70d1da5c1",
+  "client_modified": false,
+  "platform": "Ubuntu 26.04.1 amd64",
+  "wire_version": 4,
+  "transport": "UDP canonical Keepalive through library encode/decode",
+  "no_server_keepalive_reply": "native client reconnects on receive-health expiry",
+  "server_keepalive_reply": {
+    "active_bound_endpoint_only": true,
+    "idle_payload_seconds": 90,
+    "same_session_without_reconnect": true,
+    "encrypted_ping_after_idle": true,
+    "natural_rekeys": 3
+  },
+  "evidence": "server/artifacts/lab-full.json",
+  "server_idle_policy": "keepalive does not update authenticated payload activity"
+}
