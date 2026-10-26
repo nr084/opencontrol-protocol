@@ -76,6 +76,7 @@ impl ServerCertVerifier for PinnedCertificate {
             .supported_schemes()
     }
 }
+#[allow(dead_code)] // Shared by separate client and endpoint diagnostic binaries.
 pub fn pinned(certificate: &[u8]) -> anyhow::Result<ClientConfig> {
     anyhow::ensure!(
         !certificate.is_empty() && certificate.len() <= 65536,
@@ -90,4 +91,84 @@ pub fn pinned(certificate: &[u8]) -> anyhow::Result<ClientConfig> {
         .dangerous()
         .with_custom_certificate_verifier(Arc::new(verifier))
         .with_no_client_auth())
+}
+
+#[allow(dead_code)]
+pub fn pinned_client(
+    certificate: &[u8],
+    client: Vec<u8>,
+    key: Vec<u8>,
+) -> anyhow::Result<ClientConfig> {
+    anyhow::ensure!(
+        !certificate.is_empty() && certificate.len() <= 65536,
+        "trusted certificate size"
+    );
+    let verifier = PinnedCertificate {
+        fingerprint: Sha256::digest(certificate).into(),
+        provider: Arc::new(rustls::crypto::ring::default_provider()),
+    };
+    Ok(ClientConfig::builder()
+        .dangerous()
+        .with_custom_certificate_verifier(Arc::new(verifier))
+        .with_client_auth_cert(
+            vec![CertificateDer::from(client)],
+            rustls::pki_types::PrivatePkcs8KeyDer::from(key).into(),
+        )?)
+}
+
+impl rustls::server::danger::ClientCertVerifier for PinnedCertificate {
+    fn root_hint_subjects(&self) -> &[rustls::DistinguishedName] {
+        &[]
+    }
+    fn verify_client_cert(
+        &self,
+        certificate: &CertificateDer<'_>,
+        intermediates: &[CertificateDer<'_>],
+        now: UnixTime,
+    ) -> Result<rustls::server::danger::ClientCertVerified, Error> {
+        let name = ServerName::try_from("explicit-pin.invalid")
+            .map_err(|_| Error::General("pin name".into()))?;
+        ServerCertVerifier::verify_server_cert(self, certificate, intermediates, &name, &[], now)?;
+        Ok(rustls::server::danger::ClientCertVerified::assertion())
+    }
+    fn verify_tls12_signature(
+        &self,
+        message: &[u8],
+        certificate: &CertificateDer<'_>,
+        signature: &DigitallySignedStruct,
+    ) -> Result<HandshakeSignatureValid, Error> {
+        ServerCertVerifier::verify_tls12_signature(self, message, certificate, signature)
+    }
+    fn verify_tls13_signature(
+        &self,
+        message: &[u8],
+        certificate: &CertificateDer<'_>,
+        signature: &DigitallySignedStruct,
+    ) -> Result<HandshakeSignatureValid, Error> {
+        ServerCertVerifier::verify_tls13_signature(self, message, certificate, signature)
+    }
+    fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
+        ServerCertVerifier::supported_verify_schemes(self)
+    }
+}
+#[allow(dead_code)]
+pub fn pinned_server(
+    certificate: &[u8],
+    own: Vec<u8>,
+    key: Vec<u8>,
+) -> anyhow::Result<rustls::ServerConfig> {
+    anyhow::ensure!(
+        !certificate.is_empty() && certificate.len() <= 65536,
+        "trusted certificate size"
+    );
+    let verifier = PinnedCertificate {
+        fingerprint: Sha256::digest(certificate).into(),
+        provider: Arc::new(rustls::crypto::ring::default_provider()),
+    };
+    Ok(rustls::ServerConfig::builder()
+        .with_client_cert_verifier(Arc::new(verifier))
+        .with_single_cert(
+            vec![CertificateDer::from(own)],
+            rustls::pki_types::PrivatePkcs8KeyDer::from(key).into(),
+        )?)
 }

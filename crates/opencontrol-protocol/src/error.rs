@@ -2,6 +2,26 @@ use thiserror::Error;
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum ProtocolError {
+    #[error("unsupported cipher kind: {0}")]
+    UnsupportedCipher(u8),
+    #[error("legacy compatibility is disabled")]
+    LegacyDisabled,
+    #[error("unkeyed legacy checksum failed; this is not a MAC")]
+    ChecksumFailure,
+    #[error("key/counter exhausted; install a fresh key")]
+    KeyExhausted,
+    #[error("another local key change is awaiting acknowledgment")]
+    RekeyPending,
+    #[error("ambiguous simultaneous key changes; reconnect required")]
+    RekeyCollision,
+    #[error("stale local session event")]
+    StaleSession,
+    #[error("local session is closed")]
+    Closed,
+    #[error("monotonic time moved backwards")]
+    InvalidTime,
+    #[error("unsupported capability: {0}")]
+    UnsupportedCapability(&'static str),
     #[error("incomplete input")]
     Incomplete,
     #[error("invalid length")]

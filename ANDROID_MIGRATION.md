@@ -1,5 +1,10 @@
 # Android migration to OpenControl Protocol 0.2.0
 
+**Historical0.2 sketch. For0.9 use [MIGRATION.md](MIGRATION.md), including its
+required terminal-handler replacement and desired/applied acknowledgment contract.
+The clone/commit-on-platform-success example below is superseded for partial and
+segmented updates by RouteApplications. The61-minute result below tested0.2 only.**
+
 Library changes alone do **not** fix the current Android disconnect. This task
 does not modify client-android. Apply the following changes in that consumer.
 

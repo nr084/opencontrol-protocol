@@ -24,16 +24,39 @@
 #![forbid(unsafe_code)]
 #![deny(missing_debug_implementations)]
 
+pub mod connection;
 mod control;
 pub mod crypto;
 pub mod datagram;
 mod error;
+mod extensions;
 mod limits;
+pub mod liveness;
+pub mod route_application;
 pub mod routes;
+pub mod s2s;
+pub mod session;
 pub mod state;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Capabilities;
+impl Capabilities {
+    pub const IPV6_ENVELOPE: bool = true;
+    pub const IPV6_CONFIGURATION: bool = false;
+    pub const SITE_TO_SITE: bool = true;
+    pub const LEGACY: bool = cfg!(feature = "legacy");
+    pub fn require_ipv6_configuration() -> Result<(), ProtocolError> {
+        Err(ProtocolError::UnsupportedCapability(
+            "IPv6 address/route negotiation is not established",
+        ))
+    }
+}
+#[cfg(feature = "legacy")]
+pub mod legacy;
 
 pub use control::*;
 pub use error::ProtocolError;
+pub use extensions::*;
 pub use limits::ProtocolLimits;
 pub use routes::{RouteConfiguration, RouteState, RouteUpdate};
 pub use state::{Direction, ProtocolState, Role, StateMachine};

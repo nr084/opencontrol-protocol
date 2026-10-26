@@ -195,6 +195,7 @@ fn invalid_input_is_atomic_including_pending_maintenance() {
 fn limits_are_atomic_and_allow_replacement_at_capacity() {
     let mut s = RouteState::new(ProtocolLimits {
         max_collection_items: 1,
+        max_route_entries: 1,
         ..limits()
     });
     changed(&mut s, &message(3, vec![route(1)]));

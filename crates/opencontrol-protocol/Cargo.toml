@@ -8,12 +8,18 @@ license.workspace = true
 readme = "../../README.md"
 repository = "https://github.com/nr084/opencontrol-protocol"
 
+[features]
+default = []
+legacy = ["dep:blowfish"]
+
 [dependencies]
 bytes = "1"
 thiserror = "2"
 aes-gcm = "0.10"
 getrandom = "0.2"
 zeroize = "1"
+subtle = "2"
+blowfish = { version = "0.10", features = ["zeroize"], optional = true }
 
 [dev-dependencies]
 proptest = "1"

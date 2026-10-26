@@ -28,6 +28,11 @@ const DEFAULT_ROUTES: [Route; 2] = [
 ];
 /// Hard local resource policy, not a negotiated protocol limit.
 const MAX_STORED_ROUTES: usize = 4096;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RouteProfile {
+    Client,
+    Endpoint,
+}
 
 /// Canonical set of server-requested routes and the confirmed client status.
 /// This is not a complete OS interface configuration.
@@ -57,7 +62,8 @@ impl RouteConfiguration {
 /// A successful update always provides the current configuration.
 #[derive(Debug, PartialEq, Eq)]
 pub enum RouteUpdate<'a> {
-    /// No platform update, reconnect, key reset or interface recreation is needed.
+    /// Logical no-op: no reconnect or key reset. Previously failed OS operations
+    /// or a changed external ownership conflict may still require reconciliation.
     Unchanged(&'a RouteConfiguration),
     /// Initial configuration or changed effective routes/status. Caller applies OS policy.
     Changed(&'a RouteConfiguration),
@@ -72,6 +78,7 @@ pub struct RouteState {
     touched: Vec<Route>,
     maintenance_pending: bool,
     last_flags: Option<u8>,
+    profile: RouteProfile,
 }
 impl RouteState {
     pub fn new(limits: ProtocolLimits) -> Self {
@@ -81,6 +88,13 @@ impl RouteState {
             touched: Vec::new(),
             maintenance_pending: false,
             last_flags: None,
+            profile: RouteProfile::Client,
+        }
+    }
+    pub fn for_endpoint(limits: ProtocolLimits) -> Self {
+        Self {
+            profile: RouteProfile::Endpoint,
+            ..Self::new(limits)
         }
     }
     pub fn current(&self) -> Option<&RouteConfiguration> {
@@ -90,7 +104,12 @@ impl RouteState {
         self.last_flags
     }
     pub fn unknown_flags(&self) -> u8 {
-        self.last_flags.unwrap_or(0) & !0x0f
+        self.last_flags.unwrap_or(0)
+            & !if self.profile == RouteProfile::Client {
+                0x0f
+            } else {
+                0x03
+            }
     }
     pub fn maintenance_pending(&self) -> bool {
         self.maintenance_pending
@@ -107,7 +126,7 @@ impl RouteState {
         for route in &message.records {
             validate(route)?;
         }
-        let capacity = self.limits.max_collection_items.min(MAX_STORED_ROUTES);
+        let capacity = self.limits.max_route_entries.min(MAX_STORED_ROUTES);
         let mut next = self.current.clone().unwrap_or(RouteConfiguration {
             routes: Vec::new(),
             safe_lan: false,
@@ -123,11 +142,11 @@ impl RouteState {
         if message.finishes_routes() {
             next.routes.retain(|route| touched.contains(route));
         }
-        for route in message
-            .records
-            .iter()
-            .chain(DEFAULT_ROUTES.iter().filter(|_| message.is_full_tunnel()))
-        {
+        for route in message.records.iter().chain(
+            DEFAULT_ROUTES
+                .iter()
+                .filter(|_| self.profile == RouteProfile::Client && message.is_full_tunnel()),
+        ) {
             if !next.routes.contains(route) {
                 if next.routes.len() >= capacity {
                     return Err(ProtocolError::Limit("stored routes"));
@@ -142,7 +161,7 @@ impl RouteState {
             pending = false;
         }
         next.routes.sort_unstable_by_key(|r| (r.network, r.netmask));
-        next.safe_lan = message.safe_lan();
+        next.safe_lan = self.profile == RouteProfile::Client && message.safe_lan();
         let changed = self.current.as_ref() != Some(&next);
         // Commit only after every validation and allocation bound check succeeds.
         self.touched = touched;
@@ -156,7 +175,7 @@ impl RouteState {
         }
     }
 }
-fn validate(route: &Route) -> Result<(), ProtocolError> {
+pub(crate) fn validate(route: &Route) -> Result<(), ProtocolError> {
     let mask = u32::from_be_bytes(route.netmask);
     let prefix = mask.leading_ones();
     let expected = if prefix == 0 {
@@ -171,4 +190,52 @@ fn validate(route: &Route) -> Result<(), ProtocolError> {
         return Err(ProtocolError::InvalidField("route network"));
     }
     Ok(())
+}
+
+/// Encode a complete advertisement every time requested, even when its logical set
+/// is unchanged. Per-frame u8 counts and aggregate limits are independent.
+pub fn advertisement_batches(
+    records: &[Route],
+    base_flags: u8,
+    limits: ProtocolLimits,
+) -> Result<Vec<Routes>, ProtocolError> {
+    if records.len() > limits.max_route_entries.min(MAX_STORED_ROUTES) {
+        return Err(ProtocolError::Limit("advertised routes"));
+    }
+    for route in records {
+        validate(route)?;
+    }
+    limits.frame(6)?;
+    let max_payload = limits
+        .max_payload_size
+        .min(limits.max_frame_size.saturating_sub(4))
+        .min(63995);
+    let batch = ((max_payload.saturating_sub(2)) / 8)
+        .min(255)
+        .min(limits.max_collection_items);
+    if !records.is_empty() && batch == 0 {
+        return Err(ProtocolError::Limit("route batch size"));
+    }
+    if records.is_empty() {
+        return Ok(vec![Routes {
+            flags: base_flags | 3,
+            records: vec![],
+        }]);
+    }
+    let count = records.len().div_ceil(batch);
+    let mut result = Vec::with_capacity(count);
+    for (i, chunk) in records.chunks(batch).enumerate() {
+        let mut flags = base_flags & !3;
+        if i == 0 {
+            flags |= 1
+        }
+        if i + 1 == count {
+            flags |= 2
+        }
+        result.push(Routes {
+            flags,
+            records: chunk.to_vec(),
+        });
+    }
+    Ok(result)
 }

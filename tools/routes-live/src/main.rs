@@ -4,7 +4,8 @@ use anyhow::{ensure, Context, Result};
 use bytes::Bytes;
 use opencontrol_protocol::{
     crypto::SessionKey,
-    datagram::{DataCipher, Datagram, NetworkPacket},
+    datagram::{Datagram, NetworkPacket},
+    session::KeySlots,
     *,
 };
 use std::{
@@ -41,7 +42,13 @@ impl Control {
                     self.machine.version().unwrap_or(WireVersion::V4),
                     self.limits,
                 )?;
-                self.machine.incoming(&m)?;
+                self.machine.incoming(&m).with_context(|| {
+                    format!(
+                        "incoming opcode {} in {:?}",
+                        m.opcode(),
+                        self.machine.state()
+                    )
+                })?;
                 return Ok(m);
             }
             let mut byte = Zeroizing::new([0; 1]);
@@ -174,20 +181,21 @@ async fn run() -> Result<()> {
     drop(username);
     drop(input);
     let key = SessionKey::generate()?;
-    let mut ciphers = [
-        Some(DataCipher::new(
-            SessionKey::from_bytes(*key.as_bytes()),
-            0,
-            WireVersion::V4,
-        )?),
-        None,
-    ];
+    let mut keys = KeySlots::new(WireVersion::V4, LegacyPolicy::Disabled)?;
+    let epoch = keys.epoch();
+    keys.install_initial(
+        epoch,
+        &AnyCipherConfig::Aes(CipherConfig {
+            slot: 0,
+            key: SessionKey::from_bytes(*key.as_bytes()),
+        }),
+    )?;
     let mut description = [0; 128];
     description[..22].copy_from_slice(b"OpenControl routes lab");
     io.send(ControlMessage::InitialConfig(InitialConfig {
-        cep: 60,
+        cep: 1800,
         metadata: Some(ClientMetadata {
-            version: [0, 2, 0],
+            version: [0, 9, 0],
             build: 1,
             os_code: 2,
             description,
@@ -262,15 +270,15 @@ async fn run() -> Result<()> {
                         log(serde_json::json!({"event":"routes","elapsed_seconds":start.elapsed().as_secs_f64(),"flags":m.flags,"count":m.records.len(),"changed":differs,"primary":primary,"pending":pending,"traffic_replies":replies}));
                     },
                     ControlMessage::KeepaliveResponse(_)=>keepalives+=1,
-                    ControlMessage::KeyChanged(_)=>{pending_since=None;rotations+=1;},
-                    ControlMessage::Unknown(_)=>{},
+                    ControlMessage::KeyChanged(_)=>{keys.acknowledge_local(epoch)?;pending_since=None;rotations+=1;},
+                    ControlMessage::Unknown(_) | ControlMessage::Ok(_) | ControlMessage::Error(_) | ControlMessage::Version(_) | ControlMessage::KeepaliveRequest | ControlMessage::Failure(_)=>{},
                     _=>anyhow::bail!("unexpected active message"),
                 }
             },
             n=udp.recv(&mut buffer)=> {
                 let n=n?;
-                if let Datagram::Data(d)=Datagram::decode(Bytes::copy_from_slice(&buffer[..n]),limits)? {
-                    let packet=ciphers[d.slot as usize].as_mut().context("unknown cipher slot")?.open(&d,limits)?;
+                if n>=4 && buffer[1]==0 && buffer[2]==0 {
+                    let packet=keys.open(epoch,Bytes::copy_from_slice(&buffer[..n]),limits)?.packet;
                     let b=&packet.payload;
                     if packet.ether_type==0x0800 && b.len()>=36 && b[0]==0x45 && b[9]==1 && b[20]==0 && b[24..26]==0x4f43u16.to_be_bytes() && b[28..36]==*b"OCROUTES" && b[12..16]==gateway && b[16..20]==ip.address && checksum(&b[20..])==0 {
                         replies+=1;last_reply=Some(Instant::now());post_update_reply=true;
@@ -283,14 +291,13 @@ async fn run() -> Result<()> {
                 if last_request.elapsed()>=Duration::from_secs(30) {io.send(ControlMessage::KeepaliveRequest).await?;last_request=Instant::now();}
                 if last_data.elapsed()>=Duration::from_secs(5) {
                     udp.send(&Datagram::Keepalive.encode(limits)?).await?;
-                    let slot=io.machine.primary_slot().context("no primary")? as usize;
-                    let data=ciphers[slot].as_mut().context("no cipher")?.seal(&echo(ip.address,gateway,sent as u16),limits)?;
-                    udp.send(&Datagram::Data(data).encode(limits)?).await?;sent+=1;last_data=Instant::now();
+                    let data=keys.seal(epoch,&echo(ip.address,gateway,sent as u16),limits)?;
+                    udp.send(&data).await?;sent+=1;last_data=Instant::now();
                 }
                 let slot=io.machine.primary_slot().context("no primary")? as usize;
-                if pending_since.is_none() && (last_rotation.elapsed()>=Duration::from_secs(u64::from(ip.cep)/2) || ciphers[slot].as_ref().is_some_and(DataCipher::needs_rotation)) {
+                if pending_since.is_none() && (last_rotation.elapsed()>=Duration::from_secs(u64::from(ip.cep)/2) || keys.needs_rotation()) {
                     let next=1-slot;let key=SessionKey::generate()?;
-                    ciphers[next]=Some(DataCipher::new(SessionKey::from_bytes(*key.as_bytes()),next as u8,WireVersion::V4)?);
+                    keys.propose(epoch,&AnyCipherConfig::Aes(CipherConfig {slot:next as u8,key:SessionKey::from_bytes(*key.as_bytes())}))?;
                     io.send(ControlMessage::KeyChange(CipherConfig {slot:next as u8,key})).await?;last_rotation=Instant::now();pending_since=Some(last_rotation);
                 }
                 if last_report.elapsed()>=Duration::from_secs(60) {log(serde_json::json!({"event":"progress","elapsed_seconds":start.elapsed().as_secs(),"sent":sent,"replies":replies,"periodic_unchanged":periodic,"rekeys":rotations}));last_report=Instant::now();}

@@ -1,7 +1,11 @@
 # OpenControl Protocol — canonical library specification
 
 This specification describes the observed wire format, independent of product
-names. Wire version is1..4; the Rust package version is0.1.0.
+names. Wire version is1..4; the Rust package version is0.9.0.
+
+The 2026-10-26 research closure supersedes historical UNKNOWN entries. See
+[migration](MIGRATION.md), [legacy format](LEGACY.md), [S2S](S2S.md) and
+[route application](ROUTES_INTEGRATION.md) for the expanded0.9 contracts.
 
 ## Evidence and confidence
 
@@ -74,7 +78,9 @@ bytes and flags are preserved. Character normalization is never invented.
   Username expects OK; password expects OK or ERR. Backend decisions stay outside.
 - Library policy: exactly one trailing NUL and no interior NUL.
 - Failure: missing terminator, interior NUL or resource excess rejected.
-- UNKNOWN: non-ASCII encoding/normalization and complete server credential grammar.
+- KNOWN/OBSERVED: exact UTF-8 bytes plus NUL; no trim, casefold or Unicode
+  normalization. Embedded NUL is rejected by our API rather than silently truncated.
+  The server's API username storage limit is not the wire/password limit. CE0001–5.
 - Evidence: E0009/E0010/E0036. Synthetic credential fixtures only.
 
 ### OK — opcode3
@@ -84,8 +90,8 @@ bytes and flags are preserved. Character normalization is never invented.
   Zero kind has no length/value. Minimal payload `00`.
 - Optional fields: any number of nonzero-kind TLVs within limits; duplicate kinds
   and their order are preserved, not normalized. Unknown kinds remain opaque.
-- KNOWN: password response parser consumes kind1 text for later browser handling.
-- INFERRED: kind1 describes a verification URL; exact grammar/completion UNKNOWN.
+- Kind1 remains opaque extension bytes. A generic TLV/handler name establishes no
+  additional authentication feature; only username/password belongs to this profile.
   Library does not launch processes or perform verification flows.
 - Failure: missing terminator, truncation, bytes after terminator or limit excess.
   Strict trailing-byte rejection is library policy.
@@ -210,13 +216,29 @@ and121 acknowledged rekeys in the same session. Evidence:
 No changed lists, unknown-bit policy, OS route application or Android end-to-end
 acceptance are inferred from this observation.
 
+### Route query, wire failures and S2S (0.9)
+
+Q_ROUTES12 payload is exactly00. R_ROUTES13 is count:u8 then count records of
+network4/mask4, with no flags byte. Empty R13 does not finish a query; R_NO_MORE_ROUTES14
+payload00 does. Bound queries and aggregation: a measured native256-record reply
+can yield count0 without progress. `RouteQuery` limits outstanding requests and
+refuses an endless zero-progress loop. SC0001/SC0006/SC0007.
+
+Failure opcodes15 (already connected),20 (license),21 (invalid request) carry opaque
+payload. They are not local implementation enum numbers or a full error registry.
+IPCONFIG16/17/18 has a separate certificate-selected S2S state machine; exact layouts
+and rejection branch are in [S2S.md](S2S.md). USER cannot select this role.
+
 ### Unknown control messages
 
-Opcodes not above, including candidate12, are `Unknown(ControlFrame)`.
+Opcodes outside the known1..22 registry are `Unknown(ControlFrame)`.
 Payload bytes are preserved within framing limits. No direction/state/semantics
 are invented. KNOWN: reference active incoming unknown opcode returns success;
 unexpected handshake opcode fails. The library permits server-to-client Unknown
-only in Active. Evidence: E0023/E0030. Opcode12 is not declared a disconnect.
+in Active. Evidence: E0023/E0030. Opcode12 is a route request, not a disconnect.
+Client ACTIVE also accepts3/4/22/10/11; C0019 includes ERR4/a7 followed by valid
+ROUTES. Authentication/setup error policy is not applied to ACTIVE. Server ACTIVE
+unexpected input uses ReplyInvalidRequest; client/server receive policies differ.
 
 ## UDP envelopes
 
@@ -273,8 +295,8 @@ OBSERVED; this crate neither reassembles nor interprets IP packets.
 Authentication failure drops plaintext without consuming replay state. Wrong slot
 fails before crypto; wrong key fails tag verification. A wrong session cannot be
 identified by an invented session header; application chooses key/peer ownership.
-Both directions use the same installed key. Legacy cipher kind0 is not implemented:
-its full safe wire semantics are not established for this library.
+Both directions use the same installed key. Legacy kind0 is implemented only with
+explicit build/runtime opt-in; [its checksum is not a MAC](LEGACY.md).
 Evidence: E0018–E0021/E0038/E0057; synthetic AES vector and lab data tests.
 
 ### Replay and rotations
@@ -291,21 +313,24 @@ Evidence: E0020/E0021/E0025/E0037/E0038 and bounded replay/rotation lab observat
 
 `Initial → VersionReply → Username → UsernameResult → Password → PasswordResult
 → InitialConfig → IpConfig → UdpBinding → Active → Closed`.
-Only sender/receiver combinations above are accepted. Authentication/setup ERR
+The client/server profile follows that ordering. Authentication/setup ERR
 closes the modeled handshake. Active accepts client key changes and keepalives,
 server key acknowledgments, keepalive responses, routes and unknown messages.
 No explicit disconnect opcode is established; caller invokes close on EOF/failure.
-No wire action is emitted by transitions. No browser, user, network or timer policy
-exists here. Evidence: E0007–E0017/E0023–E0025/E0043.
+No wire action is emitted by transitions. `Liveness` supplies caller-clock deadlines;
+`ProtocolSession` coordinates keys, routes, binding and cancellation without I/O.
+S2S has its own ordering. Evidence: E0007–E0017/E0023–E0025/E0043, ST/SL/SC groups.
 
 ## Remaining unknowns and readiness
 
-Secret generation/lifetime, complete error registry, non-ASCII credentials, broad
-metadata/flags policy, peer IPv6, long-term expiry, NAT migration and termination
-remain UNKNOWN. This version provides structural types for EtherTypes without
-claiming IPv6 peer support. The reference adapter's IPv6 filtering is local behavior.
-The server must validate and test its policy using an authorized client/capture
-matrix before declaring production compatibility.
+Complete error registry, unknown flag bits, broad product/platform compatibility,
+end-to-end IPv6 and unbounded key overlap remain unestablished. Credentials preserve
+exact UTF-8 with no normalization/casefold/trim; embedded NUL is rejected. Metadata
+description is safely NUL terminated, maximum127 bytes, supplied by the caller.
+Observed source-port changes disrupt data: no seamless endpoint migration is promised.
+Termination may remain silent after server session removal; locally cancel and bound
+transport closure instead of waiting indefinitely for EOF. Old slots remain usable
+until replaced/closed in our coordinator;65-second observations do not prove infinity.
 
 Every discovery follows observe → hypothesis → controlled experiment → capture →
 compare → prove/refute → document → implement → test. Synthetic vectors are labeled

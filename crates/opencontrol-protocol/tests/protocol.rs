@@ -284,6 +284,22 @@ fn handshake_rekey_unknown_and_invalid_transition() {
                 }),
             )
             .unwrap();
+            // 0.9 serializes outbound proposals: acknowledge before offering the next key.
+            assert_eq!(
+                s.observe(
+                    ClientToServer,
+                    &ControlMessage::KeyChange(CipherConfig {
+                        slot: 1 - slot,
+                        key: SessionKey::from_bytes([2; 16])
+                    })
+                ),
+                Err(ProtocolError::RekeyPending)
+            );
+            s.observe(
+                ServerToClient,
+                &ControlMessage::KeyChanged(Bytes::from_static(&[0])),
+            )
+            .unwrap();
         }
         s.observe(
             ServerToClient,

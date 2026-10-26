@@ -1,4 +1,5 @@
 use crate::{crypto::SessionKey, ProtocolError, ProtocolLimits, WireVersion};
+use crate::{AnyCipherConfig, LegacyCipherConfig, RouteReply, WireFailure, WireFailureKind};
 use bytes::{Bytes, BytesMut};
 use std::fmt;
 
@@ -152,6 +153,10 @@ impl fmt::Debug for Credential {
     }
 }
 impl Credential {
+    /// Preserve UTF-8 exactly: no trimming, normalization, case folding or storage-limit truncation.
+    pub fn from_utf8(value: &str, limits: ProtocolLimits) -> Result<Self, ProtocolError> {
+        Self::new(Bytes::copy_from_slice(value.as_bytes()), limits)
+    }
     pub fn new(bytes: Bytes, limits: ProtocolLimits) -> Result<Self, ProtocolError> {
         if bytes.len() > limits.max_string_size {
             return Err(ProtocolError::Limit("credential"));
@@ -178,7 +183,7 @@ impl fmt::Debug for Extension {
             .finish_non_exhaustive()
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Route {
     pub network: [u8; 4],
     pub netmask: [u8; 4],
@@ -217,6 +222,34 @@ pub struct ClientMetadata {
     pub os_code: u32,
     pub description: [u8; 128],
 }
+impl ClientMetadata {
+    /// Safely NUL-terminate a complete UTF-8 description. Overlong input is rejected, not truncated.
+    pub fn new(
+        version: [u8; 3],
+        build: u16,
+        os_code: u32,
+        description: &str,
+    ) -> Result<Self, ProtocolError> {
+        if description.as_bytes().contains(&0) {
+            return Err(ProtocolError::InvalidField("metadata NUL"));
+        }
+        if description.len() > 127 {
+            return Err(ProtocolError::Limit("metadata description"));
+        }
+        let mut bytes = [0; 128];
+        bytes[..description.len()].copy_from_slice(description.as_bytes());
+        Ok(Self {
+            version,
+            build,
+            os_code,
+            description: bytes,
+        })
+    }
+    pub fn description_bytes(&self) -> &[u8] {
+        let end = self.description.iter().position(|b| *b == 0).unwrap_or(128);
+        &self.description[..end]
+    }
+}
 #[derive(Debug)]
 pub struct CipherConfig {
     pub slot: u8,
@@ -228,9 +261,22 @@ pub struct InitialConfig {
     pub metadata: Option<ClientMetadata>,
     pub cipher: CipherConfig,
 }
+#[derive(Debug)]
+pub struct LegacyInitialConfig {
+    pub cep: u16,
+    pub metadata: Option<ClientMetadata>,
+    pub cipher: LegacyCipherConfig,
+}
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BindingSecret(pub [u8; 128]);
+impl BindingSecret {
+    pub fn generate() -> Result<Self, ProtocolError> {
+        let mut secret = zeroize::Zeroizing::new([0u8; 128]);
+        getrandom::getrandom(&mut secret[..]).map_err(|_| ProtocolError::Randomness)?;
+        Ok(Self(*secret))
+    }
+}
 impl fmt::Debug for BindingSecret {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("BindingSecret([REDACTED])")
@@ -284,13 +330,22 @@ pub enum ControlMessage {
     Ok(Vec<Extension>),
     Error(Bytes),
     InitialConfig(InitialConfig),
+    LegacyInitialConfig(LegacyInitialConfig),
     IpConfig(Box<IpConfig>),
     SecretReceived(Bytes),
     KeyChange(CipherConfig),
+    LegacyKeyChange(LegacyCipherConfig),
     KeyChanged(Bytes),
     KeepaliveRequest,
     KeepaliveResponse(Bytes),
     Routes(Routes),
+    RouteRequest,
+    RouteReply(RouteReply),
+    NoMoreRoutes,
+    Failure(WireFailure),
+    S2sConfig1(crate::s2s::IpConfig1),
+    S2sConfig2(crate::s2s::IpConfig2),
+    S2sConfig3(crate::s2s::IpConfig3),
     Unknown(ControlFrame),
 }
 impl fmt::Debug for ControlMessage {
@@ -339,14 +394,21 @@ impl ControlMessage {
             Self::Password(_) => 2,
             Self::Ok(_) => 3,
             Self::Error(_) => 4,
-            Self::InitialConfig(_) => 5,
+            Self::InitialConfig(_) | Self::LegacyInitialConfig(_) => 5,
             Self::IpConfig(_) => 6,
             Self::SecretReceived(_) => 7,
-            Self::KeyChange(_) => 8,
+            Self::KeyChange(_) | Self::LegacyKeyChange(_) => 8,
             Self::KeyChanged(_) => 9,
             Self::KeepaliveRequest => 10,
             Self::KeepaliveResponse(_) => 11,
             Self::Routes(_) => 19,
+            Self::RouteRequest => 12,
+            Self::RouteReply(_) => 13,
+            Self::NoMoreRoutes => 14,
+            Self::Failure(f) => f.kind as u8,
+            Self::S2sConfig1(_) => 16,
+            Self::S2sConfig2(_) => 17,
+            Self::S2sConfig3(_) => 18,
             Self::Unknown(f) => f.opcode,
         }
     }
@@ -419,7 +481,33 @@ impl ControlMessage {
             4 => Self::Error(frame.payload),
             5 => {
                 let extended = matches!(version, WireVersion::V3 | WireVersion::V4);
+                if p.len() >= 4 && p[2] == 0 {
+                    exact(p, if extended { 167 } else { 30 })?;
+                    if extended && !p[13..141].contains(&0) {
+                        return Err(ProtocolError::InvalidField("unterminated metadata"));
+                    }
+                    let metadata = extended.then(|| ClientMetadata {
+                        version: array(p, 4),
+                        build: u16::from_be_bytes(array(p, 7)),
+                        os_code: u32::from_be_bytes(array(p, 9)),
+                        description: array(p, 13),
+                    });
+                    let mut cipher = zeroize::Zeroizing::new(Vec::with_capacity(28));
+                    cipher.extend_from_slice(&p[2..4]);
+                    cipher.extend_from_slice(&p[if extended { 141 } else { 4 }..]);
+                    let AnyCipherConfig::Legacy(cipher) = AnyCipherConfig::decode(&cipher)? else {
+                        return Err(ProtocolError::InvalidField("legacy kind"));
+                    };
+                    return Ok(Self::LegacyInitialConfig(LegacyInitialConfig {
+                        cep: u16::from_be_bytes(array(p, 0)),
+                        metadata,
+                        cipher,
+                    }));
+                }
                 exact(p, if extended { 160 } else { 23 })?;
+                if extended && !p[13..141].contains(&0) {
+                    return Err(ProtocolError::InvalidField("unterminated metadata"));
+                }
                 let metadata = extended.then(|| ClientMetadata {
                     version: array(p, 4),
                     build: u16::from_be_bytes(array(p, 7)),
@@ -456,7 +544,10 @@ impl ControlMessage {
                 }))
             }
             7 => Self::SecretReceived(frame.payload),
-            8 => Self::KeyChange(decode_cipher(p)?),
+            8 => match AnyCipherConfig::decode(p)? {
+                AnyCipherConfig::Aes(c) => Self::KeyChange(c),
+                AnyCipherConfig::Legacy(c) => Self::LegacyKeyChange(c),
+            },
             9 => Self::KeyChanged(frame.payload),
             10 => {
                 if p != [0] {
@@ -465,6 +556,49 @@ impl ControlMessage {
                 Self::KeepaliveRequest
             }
             11 => Self::KeepaliveResponse(frame.payload),
+            12 => {
+                if p != [0] {
+                    return Err(ProtocolError::InvalidField("route request"));
+                }
+                Self::RouteRequest
+            }
+            13 => {
+                if p.is_empty() {
+                    return Err(ProtocolError::InvalidLength);
+                }
+                exact(p, 1 + 8 * p[0] as usize)?;
+                if p[0] as usize > limits.max_collection_items {
+                    return Err(ProtocolError::Limit("route reply"));
+                }
+                Self::RouteReply(RouteReply {
+                    records: p[1..]
+                        .as_chunks::<8>()
+                        .0
+                        .iter()
+                        .map(|r| Route {
+                            network: array(r, 0),
+                            netmask: array(r, 4),
+                        })
+                        .collect(),
+                })
+            }
+            14 => {
+                if p != [0] {
+                    return Err(ProtocolError::InvalidField("no more routes"));
+                }
+                Self::NoMoreRoutes
+            }
+            15 | 20 | 21 => Self::Failure(WireFailure {
+                kind: match frame.opcode {
+                    15 => WireFailureKind::AlreadyConnected,
+                    20 => WireFailureKind::License,
+                    _ => WireFailureKind::InvalidRequest,
+                },
+                payload: frame.payload,
+            }),
+            16 => Self::S2sConfig1(crate::s2s::IpConfig1::decode(p)?),
+            17 => Self::S2sConfig2(crate::s2s::IpConfig2::decode(p)?),
+            18 => Self::S2sConfig3(crate::s2s::IpConfig3::decode(p)?),
             19 => {
                 if p.len() < 2 {
                     return Err(ProtocolError::InvalidLength);
@@ -541,6 +675,9 @@ impl ControlMessage {
                 match (version, &c.metadata) {
                     (WireVersion::V1 | WireVersion::V2, None) => (),
                     (WireVersion::V3 | WireVersion::V4, Some(m)) => {
+                        if !m.description.contains(&0) {
+                            return Err(ProtocolError::InvalidField("unterminated metadata"));
+                        }
                         p.extend_from_slice(&m.version);
                         p.extend_from_slice(&m.build.to_be_bytes());
                         p.extend_from_slice(&m.os_code.to_be_bytes());
@@ -549,6 +686,32 @@ impl ControlMessage {
                     _ => return Err(ProtocolError::InvalidField("metadata for version")),
                 }
                 p.extend_from_slice(&cipher[2..]);
+            }
+            Self::LegacyInitialConfig(c) => {
+                let bytes = AnyCipherConfig::Legacy(LegacyCipherConfig {
+                    slot: c.cipher.slot,
+                    key: crate::LegacyKey::from_bytes(
+                        *c.cipher.key.key_bytes(),
+                        *c.cipher.key.salt_bytes(),
+                    ),
+                })
+                .encode()?;
+                p.extend_from_slice(&c.cep.to_be_bytes());
+                p.extend_from_slice(&bytes[..2]);
+                match (version, &c.metadata) {
+                    (WireVersion::V1 | WireVersion::V2, None) => (),
+                    (WireVersion::V3 | WireVersion::V4, Some(m)) => {
+                        if !m.description.contains(&0) {
+                            return Err(ProtocolError::InvalidField("unterminated metadata"));
+                        }
+                        p.extend_from_slice(&m.version);
+                        p.extend_from_slice(&m.build.to_be_bytes());
+                        p.extend_from_slice(&m.os_code.to_be_bytes());
+                        p.extend_from_slice(&m.description);
+                    }
+                    _ => return Err(ProtocolError::InvalidField("metadata for version")),
+                }
+                p.extend_from_slice(&bytes[2..]);
             }
             Self::IpConfig(c) => {
                 p.extend_from_slice(&c.address);
@@ -573,6 +736,36 @@ impl ControlMessage {
                 p.extend_from_slice(&c.secret.0);
             }
             Self::KeyChange(c) => encode_cipher(c, &mut p)?,
+            Self::LegacyKeyChange(c) => p.extend_from_slice(
+                &AnyCipherConfig::Legacy(LegacyCipherConfig {
+                    slot: c.slot,
+                    key: crate::LegacyKey::from_bytes(*c.key.key_bytes(), *c.key.salt_bytes()),
+                })
+                .encode()?,
+            ),
+            Self::RouteRequest | Self::NoMoreRoutes => p.push(0),
+            Self::RouteReply(r) => {
+                if r.records.len() > 255 || r.records.len() > limits.max_collection_items {
+                    return Err(ProtocolError::Limit("route reply"));
+                }
+                p.push(r.records.len() as u8);
+                for r in &r.records {
+                    p.extend_from_slice(&r.network);
+                    p.extend_from_slice(&r.netmask);
+                }
+            }
+            Self::Failure(f) => {
+                limits.frame(
+                    f.payload
+                        .len()
+                        .checked_add(4)
+                        .ok_or(ProtocolError::InvalidLength)?,
+                )?;
+                p.extend_from_slice(&f.payload)
+            }
+            Self::S2sConfig1(c) => p.extend_from_slice(&c.encode()),
+            Self::S2sConfig2(c) => p.extend_from_slice(&c.encode()?),
+            Self::S2sConfig3(c) => p.extend_from_slice(&c.encode()),
             Self::KeepaliveRequest => p.push(0),
             Self::Routes(r) => {
                 if r.records.len() > 255 || r.records.len() > limits.max_collection_items {
@@ -585,7 +778,7 @@ impl ControlMessage {
                 }
             }
             Self::Unknown(f) => {
-                if matches!(f.opcode, 1..=11 | 19 | 22) {
+                if matches!(f.opcode, 1..=22) && f.opcode != 0 {
                     return Err(ProtocolError::InvalidField(
                         "known opcode represented as unknown",
                     ));

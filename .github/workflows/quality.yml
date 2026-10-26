@@ -10,7 +10,13 @@ jobs:
           components: rustfmt, clippy
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - run: cargo test --workspace --locked
+      - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+      - run: cargo test --workspace --all-targets --locked
+      - run: cargo test --workspace --all-targets --all-features --locked
+      - run: cargo test --workspace --doc --all-features --locked
+      - run: cargo doc --workspace --no-deps --all-features --locked
+        env:
+          RUSTDOCFLAGS: -D warnings
   fuzz-smoke:
     runs-on: ubuntu-latest
     steps:
@@ -24,3 +30,4 @@ jobs:
           cargo +nightly fuzz run fuzz_control_decoder -- -max_total_time=15
           cargo +nightly fuzz run fuzz_datagram_decoder -- -max_total_time=15
           cargo +nightly fuzz run fuzz_state_machine -- -max_total_time=15
+          cargo +nightly fuzz run fuzz_session -- -max_total_time=15

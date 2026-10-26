@@ -10,7 +10,14 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 bytes = "1"
-opencontrol-protocol = { path = "../crates/opencontrol-protocol" }
+opencontrol-protocol = { path = "../crates/opencontrol-protocol", features = ["legacy"] }
+
+[[bin]]
+name = "fuzz_session"
+path = "fuzz_targets/fuzz_session.rs"
+test = false
+doc = false
+bench = false
 
 [[bin]]
 name = "fuzz_control_decoder"

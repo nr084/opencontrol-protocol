@@ -1,43 +1,36 @@
 # Architecture
 
-One crate avoids an unnecessary cross-crate secret API. Modules form these layers:
+One synchronous crate, no async runtime or transport/OS ownership:
 
-1. Caller-owned transport: TLS and datagram sockets, peer identity and certificate policy.
-2. `ProtocolDecoder` / `ProtocolEncoder`: bounded, incremental outer framing.
-3. `ControlMessage`: version-dependent typed payloads and lossless unknowns.
-4. `crypto` / `datagram`: key ownership, authenticated packets and per-slot replay.
-5. `StateMachine`: explicit handshake ordering and observed rekey promotion.
-6. `RouteState`: per-session effective ROUTES set and atomic mark/touch/sweep updates.
+1. `ProtocolDecoder`/`ProtocolEncoder`: bounded incremental framing.
+2. `ControlMessage`: exact version-dependent payloads, bounded unknown bytes.
+3. `StateMachine` and `s2s::EndpointMachine`: distinct role/state receive policies.
+4. `crypto`, `datagram`, optional `legacy`: exact packet crypto and replay.
+5. `session::KeySlots`: two slots/generations, pending ACK and local epoch fencing.
+6. `RouteState`: atomic logical START/add-touch/END state, independent of keys.
+7. `route_application::RouteApplications`: desired/applied plans and ownership.
+8. `liveness::Liveness`: caller-clock events; `connection::ProtocolSession` coordinates
+   state, keys, routes, peer binding, reconnect and local cancellation.
 
-RouteUpdate distinguishes platform-visible changes from successful no-ops. Route
-tracking is independent of StateMachine and DataCipher and cannot reset either.
-Consumers keep one tracker from initial configuration through the active session.
-For acknowledged OS updates, apply to a cloned candidate and commit only after
-platform success, including unchanged results carrying maintenance metadata.
+Adapters own sockets, TLS trust, authentication decisions, monotonic time, TUN,
+route/DNS/firewall operations and durable recovery. No wire actions happen implicitly.
+Observe outgoing messages only after a successful write; observe each incoming message
+once. Decode/validate before observing. Poll deadlines even when reads stay silent.
+Epoch tokens are local callback identities, not invented wire IDs.
 
-Dependencies are bytes, thiserror, RustCrypto aes-gcm, getrandom and zeroize.
-There is no Tokio dependency, server configuration, user backend, route installation,
-TUN/TAP, firewall manipulation or socket I/O. Core code forbids unsafe code.
+ROUTES equality describes logical configuration. Desired state commits independently
+of OS success; plans defer incomplete START/END maintenance, and actual per-operation
+acknowledgment preserves partial success and failed-removal ownership. Cleanup of an
+old epoch survives protocol reconnect. The platform serializes writes and reconciles
+external changes; this in-memory journal cannot recover independently after SIGKILL.
+See ROUTES_INTEGRATION.md for route and resolver recovery contracts.
 
-The state validator is a server-focused protocol transcript model, not a scheduler.
-It does not authenticate users, perform side effects, own keys or match UDP secrets.
-It accepts repeated key changes and late acknowledgments as observed. Caller code
-selects and maintains two DataCipher slots, deadlines and session cleanup.
+Errors carry no secret input. Outer framing errors poison that decoder; active
+unknown messages use an explicit state policy. Limits precede untrusted allocations:
+control frame maximum63999, packet default8192, per-frame route count255 and aggregate
+4096. Route owners are capped64, acknowledged resources16384. Core forbids unsafe.
 
-Error handling uses `ProtocolError`; errors contain no sensitive input.
-Outer framing errors poison the stream decoder. Unknown active server opcodes can
-be observed without aborting, while unknown handshake messages fail ordering checks.
-Known messages with malformed payloads fail typed decoding.
-
-Limits are checked before untrusted allocations. The decoder accepts a single frame
-per push, with a maximum of 63999 buffered bytes. Typed TLVs and routes have
-collection and length limits. UDP parsing and encryption cap packet size at8192.
-
-Strict parsing deliberately rejects nonmagic bytes instead of reproducing the
-reference client's header scanning. Canonical emission is enforced for credential
-NUL termination, OK list termination and Q_KEEPALIVE. Unknown reply payloads and
-flag bits are preserved. These policy differences are recorded in PROTOCOL.md.
-
-Public API is pre-1.0 and subject to deliberate revision. A future server must use
-this library rather than copy or implement a second protocol parser.
-
+Dependencies: bytes, thiserror, RustCrypto aes-gcm, getrandom, zeroize, subtle;
+optional RustCrypto blowfish0.10 with zeroize, MIT OR Apache-2.0. No Tokio in core.
+Public API is pre-1.0. MIGRATION.md records intentional safety differences from the
+observed native implementation and changes from0.2.
